@@ -12,9 +12,9 @@ import (
 	"text/scanner"
 	"time"
 
-	"github.com/mind1949/googletrans/tk"
-	"github.com/mind1949/googletrans/tkk"
-	"github.com/mind1949/googletrans/transcookie"
+	"github.com/miphik/googletrans/tk"
+	"github.com/miphik/googletrans/tkk"
+	"github.com/miphik/googletrans/transcookie"
 )
 
 const (
@@ -102,6 +102,25 @@ func New(serviceURLs ...string) *Translator {
 	}
 }
 
+func NewWithClient(client *http.Client, serviceURLs ...string) *Translator {
+	var has bool
+	for i := 0; i < len(serviceURLs); i++ {
+		if serviceURLs[i] == defaultServiceURL {
+			has = true
+			break
+		}
+	}
+	if !has {
+		serviceURLs = append(serviceURLs, defaultServiceURL)
+	}
+
+	return &Translator{
+		clt:         client,
+		serviceURLs: serviceURLs,
+		tkkCache:    tkk.NewCache(random(serviceURLs)),
+	}
+}
+
 // Translate translates text from src language to dest language
 func (t *Translator) Translate(params TranslateParams) (Translated, error) {
 	if params.Src == "" {
@@ -122,11 +141,13 @@ func (t *Translator) Translate(params TranslateParams) (Translated, error) {
 
 // Detect detects text's language
 func (t *Translator) Detect(text string) (Detected, error) {
-	transData, err := t.do(TranslateParams{
-		Src:  "auto",
-		Dest: "en",
-		Text: text,
-	})
+	transData, err := t.do(
+		TranslateParams{
+			Src:  "auto",
+			Dest: "en",
+			Text: text,
+		},
+	)
 	if err != nil {
 		return emptyDetected, err
 	}
